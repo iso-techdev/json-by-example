@@ -46,7 +46,7 @@ class Signal():
     def __init__(self, _place:str, _stamp:datetime, _samples:list[complex]):
         self._place = _place
         self. _stamp = _stamp
-        self._sample= _samples
+        self._samples= _samples
 
     @property
     def place(self):
@@ -54,7 +54,7 @@ class Signal():
 
     @property
     def stamp(self):
-        return self.stamp
+        return self._stamp
 
     @property
     def samples(self):
@@ -77,7 +77,7 @@ data =  """{
             "minute": 23,
             "s": 51
         },
-        "samples:": [
+        "samples": [
             {
                 "__class": "complex",
                 "real": -2.0,
@@ -89,7 +89,7 @@ data =  """{
                 "imag": 1.0
             },
             {
-                "__class": "complex",
+                "__class__": "complex",
                 "real": 2.0,
                 "imag": 5.0
             }
@@ -97,5 +97,43 @@ data =  """{
     }
 }"""
 
-
-        
+class ComplexEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, complex):
+            return  { 
+                     "__class":"complex",
+                     "real": obj.real,
+                     "imag": obj.imag
+                    }
+    
+        elif isinstance(obj, datetime):
+             return {
+                       "__class": "datetime",
+                       "y": obj.year,
+                       "month": obj.month,
+                       "d":obj.day,
+                       "h": obj.hour,
+                       "minute": obj.minute,
+                       "s": obj.second
+                      }
+          
+        else: 
+            return super().default(obj)
+class SignalDecoder(json.JSONDecoder):
+    def __init__(self):
+        json.JSONDecoder.__init__(self, object_hook=SignalDecoder.from_dict)  
+    @staticmethod
+    def from_dict(d):
+        if d.get("__class") == "complex":
+            return complex(d.get("real"), d.get("imag"))
+        elif d.get("__class") == "datetime":
+            return datetime(d["y"],d["month"],d["d"],d["h"],d["minute"],d["s"])  
+        return d # defaulting if not complex                
+                   
+if __name__ == '__main__':
+    x = json.loads(data, cls= SignalDecoder) # decoding the JSON string into Python object and returning a dictionary
+    print(x) 
+    y = json.dumps(x, cls=ComplexEncoder, indent=4) # encoding the Python object into JSON string and returning a string
+    print(type(y))
+    print(y) 
+                  
